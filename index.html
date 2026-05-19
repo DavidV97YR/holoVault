@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>holoVault</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#a855f7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="holoVault">
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: rgba(18,14,32,0.92);
+    --border: rgba(147,51,234,0.22);
+    --purple: #a855f7;
+    --text: #e8e0f0;
+    --text-muted: rgba(200,180,240,0.55);
+    --text-faint: rgba(200,180,240,0.3);
+    --green: #34d399;
+    --gold: #fbbf24;
+    --red: #f87171;
+    --blue: #60a5fa;
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    user-select: none; -webkit-user-select: none;
+  }
+  input, textarea { user-select: text; -webkit-user-select: text; }
+
+  /* ── Stars background ── */
+  #stars {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  }
+  .star {
+    position: absolute; border-radius: 50%; background: white;
+    animation: twinkle var(--dur, 3s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+
+  /* ── Glow orbs ── */
+  #glow {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(147,51,234,0.14) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(236,72,153,0.11) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 60% 10%, rgba(59,130,246,0.07) 0%, transparent 50%);
+  }
+
+  /* ── Layout ── */
+  #app { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: flex-end; gap: 16px;
+    padding: 16px 20px 0;
+    background: rgba(10,10,20,0.95);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0; z-index: 20;
+  }
+  .header-brand { flex: 1; padding-bottom: 14px; }
+  .header-brand h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.75rem; font-weight: 900; letter-spacing: -0.03em;
+    display: flex; align-items: center; gap: 0px; margin-bottom: 3px;
+    line-height: 1;
+  }
+  .logo-holo {
+    background: linear-gradient(135deg, #ff6eb4, #a855f7);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo-vault {
+    background: linear-gradient(135deg, #a855f7, #22d3ee);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-brand p { font-size: 0.72rem; color: var(--text-faint); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 3px; }
+  .tab {
+    padding: 8px 15px; border-radius: 8px 8px 0 0;
+    border: none; border-top: 2px solid transparent;
+    background: transparent; color: var(--text-muted);
+    font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    background: rgba(147,51,234,0.28);
+    color: #e2d9ff;
+    border-top-color: var(--purple);
+  }
+  .tab:hover:not(.active) { background: rgba(147,51,234,0.1); }
+
+  /* ── Data buttons ── */
+  .data-btns { display: flex; gap: 6px; padding: 10px 10px 14px; margin-top: auto; }
+  .data-btn {
+    flex: 1; padding: 6px 0; border-radius: 6px; text-align: center;
+    border: 1px solid rgba(147,51,234,0.3);
+    background: rgba(28,18,48,0.6); color: var(--text-muted);
+    font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
+  }
+  .data-btn:hover { background: rgba(147,51,234,0.2); color: var(--text); }
+
+  /* ── Body ── */
+  #body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 210px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 14px 10px;
+    background: rgba(10,10,20,0.92);
+    transition: width 0.3s ease, padding 0.3s ease, opacity 0.25s ease;
+  }
+  #sidebar.collapsed { width: 0; min-width: 0; padding: 0; opacity: 0; overflow: hidden; border-right: none; pointer-events: none; }
+  .sidebar-label {
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em;
+    color: var(--text-faint); margin-bottom: 8px; padding-left: 4px; text-transform: uppercase;
+  }
+  .branch-label {
+    font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--purple); padding: 10px 6px 3px; margin-top: 4px;
+    border-top: 1px solid rgba(147,51,234,0.2);
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    border-radius: 4px; transition: background 0.12s;
+  }
+  .branch-label:first-child { border-top: none; padding-top: 2px; }
+  .branch-label:hover { background: rgba(147,51,234,0.1); }
+  .branch-chevron {
+    font-size: 0.6rem; transition: transform 0.2s; display: inline-block; color: var(--purple);
+  }
+  .branch-label.collapsed .branch-chevron { transform: rotate(-90deg); }
+  .branch-members { overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease; max-height: 2000px; opacity: 1; }
+  .branch-members.collapsed { max-height: 0; opacity: 0; }
+  .gen-label {
+    font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); padding: 5px 4px 2px; margin-top: 2px;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    border-radius: 4px; transition: background 0.12s;
+  }
+  .gen-label:hover { background: rgba(147,51,234,0.08); }
+  .gen-chevron {
+    font-size: 0.55rem; transition: transform 0.2s; display: inline-block;
+    color: var(--text-faint);
+  }
+  .gen-label.collapsed .gen-chevron { transform: rotate(-90deg); }
+  .gen-members {
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    max-height: 500px; opacity: 1;
+  }
+  .gen-members.collapsed { max-height: 0; opacity: 0; }
+  .talent-btn {
+    width: 100%; text-align: left; padding: 4px 8px; border-radius: 5px;
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 0.73rem; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    margin-bottom: 1px; transition: all 0.12s;
+  }
+  .talent-btn:hover { background: rgba(147,51,234,0.12); }
+  .talent-btn.active { font-weight: 600; }
+  .talent-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .all-btn {
+    width: 100%; text-align: left; padding: 6px 10px; border-radius: 6px;
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 0.77rem; cursor: pointer; margin-bottom: 8px; transition: all 0.12s;
+  }
+  .all-btn.active { background: rgba(147,51,234,0.28); color: #e2d9ff; }
+  .all-btn:hover:not(.active) { background: rgba(147,51,234,0.1); }
+
+  /* ── Main ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── Filter bar ── */
+  #filterbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    padding: 10px 16px;
+    background: rgba(10,10,20,0.92);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0; z-index: 10;
+  }
+  #filterbar input, #filterbar select {
+    padding: 6px 12px; border-radius: 7px;
+    border: 1px solid rgba(147,51,234,0.3);
+    background: rgba(28,18,48,0.85); color: var(--text);
+    font-size: 0.8rem; outline: none;
+    transition: border-color 0.15s;
+  }
+  #filterbar input { flex: 1; min-width: 140px; }
+  #filterbar input:focus, #filterbar select:focus { border-color: var(--purple); }
+  #filterbar select { cursor: pointer; }
+  #result-count { font-size: 0.72rem; color: var(--text-faint); white-space: nowrap; margin-left: auto; }
+
+  /* ── Grid ── */
+  #grid-container { flex: 1; overflow-y: auto; padding: 20px; }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+  }
+
+  /* ── Card ── */
+  .card {
+    border-radius: 14px; overflow: hidden; cursor: pointer;
+    background: linear-gradient(145deg, rgba(20,14,36,0.95), rgba(14,9,28,0.97));
+    display: flex; flex-direction: column;
+    transition: transform 0.25s ease, box-shadow 0.3s ease;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 450px;
+  }
+  .card:hover {
+    transform: translateY(-4px) scale(1.012);
+    box-shadow: 0 20px 50px rgba(147,51,234,0.25), 0 0 0 1px rgba(147,51,234,0.2);
+  }
+  #grid.animate .card { animation: cardIn 0.25s ease both; }
+  .card-img-wrap {
+    position: relative; padding-top: 100%;
+    background: rgba(10,8,20,0.8);
+  }
+  .card-img-wrap img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  }
+  .card-no-img {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 38px;
+  }
+  .sold-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 800; letter-spacing: 0.1em; color: var(--red);
+  }
+  .card-badges { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .card-actions {
+    position: absolute; top: 6px; right: 6px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .action-btn {
+    width: 27px; height: 27px; border-radius: 7px; border: none; cursor: pointer;
+    font-size: 13px; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .action-btn:hover { transform: scale(1.12); }
+  .action-btn:active { transform: scale(0.9); }
+  .action-btn.wishlist-off { background: rgba(10,10,20,0.78); color: var(--gold); }
+  .action-btn.wishlist-on  { background: rgba(251,191,36,0.88); color: #1a1200; }
+  .action-btn.owned-off   { background: rgba(10,10,20,0.78); color: var(--green); }
+  .action-btn.owned-on    { background: rgba(52,211,153,0.88); color: #012a18; }
+
+  .card-info { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .card-title {
+    font-size: 1.05rem; font-weight: 600; line-height: 1.4; color: #ddd6fe;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-talents { display: flex; flex-wrap: wrap; gap: 4px; }
+  .talent-tag {
+    font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; font-weight: 600;
+  }
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+  .card-price { display: flex; flex-direction: column; gap: 0px; }
+  .card-price-jpy { font-size: 1.05rem; font-weight: 700; color: #c084fc; line-height: 1.2; }
+  .card-price-usd { font-size: 0.72rem; color: var(--text-muted); line-height: 1.2; }
+  .card-price-extra { color: rgba(192,132,252,0.5); font-weight: 400; }
+
+  .modal-price-jpy { font-size: 1.4rem; font-weight: 700; color: #c084fc; }
+  .modal-price-usd { font-size: 0.9rem; color: var(--text-muted); margin-left: 8px; }
+
+  /* ── Drop timer (card) ── */
+  .drop-timer {
+    display: flex; flex-direction: column; gap: 4px;
+    padding-top: 7px; border-top: 1px solid rgba(147,51,234,0.12); margin-top: 4px;
+  }
+  .drop-timer-label {
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-faint); display: flex; align-items: center; gap: 4px;
+  }
+  .drop-timer-icon { opacity: 0.7; }
+  .timer-live {
+    display: flex; align-items: baseline; gap: 2px; flex-wrap: wrap;
+  }
+  .timer-live .tv { font-size: 0.88rem; font-weight: 700; color: #c084fc; font-variant-numeric: tabular-nums; }
+  .timer-live .tl { font-size: 0.62rem; color: var(--text-faint); text-transform: uppercase; margin-right: 4px; }
+  .timer-days {
+    font-size: 0.82rem; color: var(--text);
+  }
+  .timer-days b { color: #c084fc; font-weight: 700; }
+
+  /* ── Drop timer (modal) ── */
+  .modal-drop-timer {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 16px; margin-bottom: 14px;
+    background: rgba(147,51,234,0.08); border: 1px solid rgba(147,51,234,0.2); border-radius: 10px;
+  }
+  .modal-drop-label {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .modal-tsegs { display: flex; gap: 5px; align-items: center; }
+  .modal-tseg {
+    display: flex; flex-direction: column; align-items: center;
+    background: rgba(147,51,234,0.15); border: 1px solid rgba(147,51,234,0.28);
+    border-radius: 8px; padding: 6px 10px; min-width: 48px;
+  }
+  .modal-tseg .tseg-val { font-size: 1.3rem; font-weight: 700; color: #c084fc; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .modal-tseg .tseg-lbl { font-size: 0.56rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .modal-tsep { color: rgba(147,51,234,0.5); font-size: 1.2rem; margin-bottom: 14px; font-weight: 700; }
+  .modal-timer-days {
+    font-size: 0.95rem; color: var(--text);
+  }
+  .modal-timer-days b { color: #c084fc; font-weight: 700; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700; border: 1px solid;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .badge-status-available  { background: rgba(52,211,153,0.18);  color: #34d399; border-color: rgba(52,211,153,0.3); }
+  .badge-status-soldout    { background: rgba(239,68,68,0.18);   color: #f87171; border-color: rgba(239,68,68,0.3); }
+  .badge-status-comingsoon { background: rgba(80,60,10,0.82);  color: #ffe082; border-color: rgba(251,191,36,0.7); }
+  .badge-status-preorder   { background: rgba(60,20,100,0.82); color: #d8aaff; border-color: rgba(168,85,247,0.7); }
+  .badge-status-delisted   { background: rgba(100,100,120,0.18); color: #9ca3af; border-color: rgba(156,163,175,0.3); }
+  .badge-type  { background: rgba(96,165,250,0.45); color: #bae0ff; border-color: rgba(147,197,253,0.7); }
+
+  /* ── Loading / empty ── */
+  #loading-state, #empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    color: var(--text-muted);
+  }
+  .spinner {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 3px solid rgba(147,51,234,0.2); border-top-color: var(--purple);
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* ── Modal ── */
+  #modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(5,3,15,0.93);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #modal-overlay.hidden { display: none; }
+  #modal {
+    background: linear-gradient(135deg, #12101e, #1a1230);
+    border: 1px solid rgba(147,51,234,0.36);
+    border-radius: 15px; width: 100%; max-width: 510px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7); overflow: hidden;
+    animation: fadeIn 0.22s ease;
+  }
+  #modal-img-wrap { position: relative; overflow: hidden; }
+  #modal-img-wrap img { width: 100%; height: auto; display: block; pointer-events: none; }
+  .modal-img-fade { pointer-events: none;
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 45%, #12101e);
+  }
+  .modal-img-badges { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+  .gallery-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    background: rgba(10,8,20,0.65); border: 1px solid rgba(147,51,234,0.4);
+    color: #c084fc; font-size: 1.6rem; line-height: 1;
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.15s, opacity 0.15s;
+    z-index: 5; padding: 0;
+  }
+  .gallery-arrow:hover { background: rgba(147,51,234,0.5); }
+  .gallery-arrow:disabled { opacity: 0.2; pointer-events: none; }
+  .gallery-prev { left: 10px; }
+  .gallery-next { right: 10px; }
+  #gallery-dots {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 5px; z-index: 5;
+  }
+  .gallery-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.3); border: none; padding: 0; cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .gallery-dot.active { background: #c084fc; transform: scale(1.3); }
+  #modal-body { padding: 20px 22px 22px; }
+  #modal-title { font-size: 1.05rem; font-weight: 700; line-height: 1.3; margin-bottom: 8px; }
+  #modal-talents { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .modal-talent-tag {
+    padding: 3px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 600;
+    border: 1px solid; border-color: rgba(255,255,255,0.1);
+  }
+  #modal-price { font-size: 1.2rem; font-weight: 800; color: #c084fc; margin-bottom: 16px; }
+  #modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-shop-btn {
+    flex: 1; padding: 9px 14px; border-radius: 8px; text-align: center;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white; text-decoration: none; font-size: 0.83rem; font-weight: 700;
+    transition: opacity 0.15s;
+  }
+  .modal-shop-btn:hover { opacity: 0.88; }
+  .modal-action-btn {
+    padding: 9px 13px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid;
+  }
+  .modal-action-btn:active { transform: scale(0.96); }
+  .modal-wishlist-off { background: transparent; color: var(--gold); border-color: rgba(251,191,36,0.4); }
+  .modal-wishlist-on  { background: rgba(251,191,36,0.2); color: var(--gold); border-color: rgba(251,191,36,0.4); }
+  .modal-owned-off { background: transparent; color: var(--green); border-color: rgba(52,211,153,0.35); }
+  .modal-owned-on  { background: rgba(52,211,153,0.2); color: var(--green); border-color: rgba(52,211,153,0.35); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    padding: 9px 20px; border-radius: 999px; z-index: 100;
+    background: rgba(140,48,230,0.95);
+    color: white; font-size: 0.83rem; font-weight: 600;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+    animation: toastIn 0.28s ease;
+    pointer-events: none;
+  }
+  #toast.hidden { display: none; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(147,51,234,0.35); border-radius: 3px; }
+
+  /* ── Animations ── */
+  @keyframes twinkle { 0%,100%{opacity:0.08} 50%{opacity:0.75} }
+  @keyframes fadeIn  { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes cardIn  { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes spin    { to{transform:rotate(360deg)} }
+  @keyframes toastIn { from{opacity:0;transform:translate(-50%,16px)} to{opacity:1;transform:translate(-50%,0)} }
+
+  /* ── Lightbox ── */
+  #lightbox {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.96);
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.18s ease;
+    cursor: zoom-out;
+  }
+  #lightbox.hidden { display: none; }
+  #lightbox img {
+    max-width: 92vw; max-height: 92vh;
+    object-fit: contain; border-radius: 6px;
+    box-shadow: 0 0 80px rgba(0,0,0,0.8);
+    cursor: default;
+  }
+  #lightbox-close {
+    position: absolute; top: 18px; right: 22px;
+    background: rgba(18,14,32,0.8); border: 1px solid rgba(147,51,234,0.4);
+    color: #c084fc; font-size: 1.3rem; width: 38px; height: 38px;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: background 0.15s;
+  }
+  #lightbox-close:hover { background: rgba(147,51,234,0.5); }
+
+  /* ── Sidebar toggle ── */
+  .sidebar-toggle-btn {
+    padding: 6px 10px; border-radius: 7px;
+    border: 1px solid rgba(147,51,234,0.3);
+    background: rgba(28,18,48,0.85); color: var(--text-muted);
+    font-size: 0.85rem; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+  }
+  .sidebar-toggle-btn:hover { background: rgba(147,51,234,0.2); color: var(--text); border-color: var(--purple); }
+
+  #sidebar-close {
+    display: none; background: none; border: none;
+    color: var(--text-muted); font-size: 1.1rem; cursor: pointer;
+    position: absolute; top: 14px; right: 14px;
+    width: 32px; height: 32px; border-radius: 8px;
+    align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+
+  /* ── Scroll-to-top ── */
+  #scroll-top {
+    position: fixed; bottom: 24px; right: 24px; z-index: 40;
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none; color: white; font-size: 1.2rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(147,51,234,0.4);
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 0; pointer-events: none; transform: translateY(10px);
+  }
+  #scroll-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  #scroll-top:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(147,51,234,0.55); }
+
+  /* ── Grid density ── */
+  .density-group { display: flex; gap: 3px; align-items: center; }
+  .density-btn {
+    padding: 5px 9px; border-radius: 6px;
+    border: 1px solid rgba(147,51,234,0.25);
+    background: transparent; color: var(--text-muted);
+    font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+    line-height: 1;
+  }
+  .density-btn:hover { border-color: var(--purple); color: var(--text); }
+  .density-btn.active { background: rgba(147,51,234,0.25); color: #e2d9ff; border-color: var(--purple); }
+
+  #grid.compact { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  #grid.compact .card-img-wrap { padding-top: 85%; }
+  #grid.compact .card-info { padding: 10px 12px; gap: 4px; }
+  #grid.compact .card-title { font-size: 0.85rem; -webkit-line-clamp: 1; }
+  #grid.compact .card-talents { display: none; }
+  #grid.compact .drop-timer { display: none; }
+  #grid.compact .card-price-jpy { font-size: 0.9rem; }
+  #grid.compact .badge { font-size: 0.65rem; padding: 2px 7px; }
+
+  /* ── Mobile sidebar overlay ── */
+  #sidebar-overlay {
+    display: none; position: fixed; inset: 0; z-index: 25;
+    background: rgba(0,0,0,0.6);
+    transition: opacity 0.3s; pointer-events: none; opacity: 0;
+  }
+  #sidebar-overlay.visible { opacity: 1; pointer-events: auto; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    #sidebar { width: 180px; }
+    #grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  }
+
+  @media (max-width: 768px) {
+    header { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 14px; }
+    .header-brand { padding-bottom: 0; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand h1 { font-size: 1.35rem; }
+    .header-brand p { display: none; }
+    .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tab { padding: 7px 12px; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; }
+
+    #sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; z-index: 30;
+      width: 260px !important; opacity: 1 !important;
+      transform: translateX(-100%); pointer-events: auto !important;
+      transition: transform 0.3s ease;
+      background: rgba(10,10,20,0.98);
+      padding: 55px 10px 14px !important;
+    }
+    #sidebar.collapsed { transform: translateX(-100%); width: 260px !important; }
+    #sidebar.mobile-open { transform: translateX(0); }
+    #sidebar-overlay { display: block; }
+    #sidebar-close {
+      display: flex; background: rgba(147,51,234,0.12); border: 1px solid rgba(147,51,234,0.3);
+      border-radius: 8px;
+    }
+    #sidebar-close:hover { background: rgba(147,51,234,0.3); color: var(--text); }
+
+    #filterbar { gap: 6px; padding: 8px 12px; }
+    #filterbar input { min-width: 100px; font-size: 0.78rem; }
+    #filterbar select { font-size: 0.75rem; padding: 5px 8px; }
+
+    #grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+    #grid-container { padding: 12px; }
+
+    #modal { max-width: 96vw; max-height: 92vh; overflow-y: auto; border-radius: 12px; }
+    #modal-body { padding: 14px 16px 18px; }
+
+    #scroll-top { bottom: 16px; right: 16px; width: 40px; height: 40px; border-radius: 10px; }
+  }
+
+  @media (max-width: 480px) {
+    .header-brand h1 { font-size: 1.15rem; }
+    .tabs { gap: 2px; }
+    .tab { padding: 6px 9px; font-size: 0.7rem; }
+
+    #grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    #grid.compact { grid-template-columns: 1fr 1fr; }
+    #grid-container { padding: 8px; }
+
+    .card { border-radius: 10px; }
+    .card-info { padding: 8px 10px; gap: 4px; }
+    .card-title { font-size: 0.82rem; -webkit-line-clamp: 1; }
+    .card-talents { display: none; }
+    .drop-timer { display: none; }
+    .card-price-jpy { font-size: 0.88rem; }
+    .action-btn { width: 24px; height: 24px; font-size: 11px; border-radius: 6px; }
+
+    #filterbar { flex-wrap: wrap; }
+    .density-group { display: none; }
+
+    #modal { max-width: 100vw; border-radius: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="glow"></div>
+<div id="stars"></div>
+
+<div id="app">
+  <!-- Header -->
+  <header>
+    <div class="header-brand">
+      <h1><span class="logo-holo">holo</span><span class="logo-vault">Vault</span></h1>
+      <p id="header-subtitle">Connecting to shop.hololivepro.com…</p>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="browse" onclick="switchTab('browse')">🔍 Browse</button>
+      <button class="tab" data-tab="wishlist" onclick="switchTab('wishlist')">⭐ Wishlist (<span id="wl-count">0</span>)</button>
+      <button class="tab" data-tab="owned" onclick="switchTab('owned')">✅ Owned (<span id="ow-count">0</span>)</button>
+    </div>
+  </header>
+
+  <div id="body">
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <button id="sidebar-close" onclick="toggleSidebar()">✕</button>
+      <div class="sidebar-label">Filter by Talent</div>
+      <button class="all-btn active" onclick="setTalentFilter(null)" id="all-talent-btn">All Talents</button>
+      <div id="talent-list"></div>
+      <div class="data-btns">
+        <button class="data-btn" onclick="exportUserData()">Export</button>
+        <button class="data-btn" onclick="document.getElementById('import-file').click()">Import</button>
+        <input type="file" id="import-file" accept=".txt" style="display:none" onchange="importUserData(this)" />
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div id="main">
+      <!-- Filters -->
+      <div id="filterbar">
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle talent filter">☰</button>
+        <input type="text" id="search" placeholder="Search merch…" oninput="debouncedRender()" />
+        <select id="filter-branch" onchange="render()">
+          <option value="All">All Branches</option>
+          <option value="JP">JP</option>
+          <option value="EN">EN</option>
+          <option value="ID">ID</option>
+          <option value="DEV_IS">DEV_IS</option>
+          <option value="holoAN">holoAN</option>
+          <option value="Office Staff">Office Staff</option>
+        </select>
+        <select id="filter-type" onchange="render()">
+          <option value="All Types">All Types</option>
+          <option>Birthday</option>
+          <option>Anniversary</option>
+          <option>Voice Pack</option>
+          <option>Music</option>
+          <option>Figure</option>
+          <option>Plush</option>
+          <option>Costume</option>
+          <option>Acrylic</option>
+          <option>Tapestry</option>
+          <option>Keychain</option>
+          <option>Card Game</option>
+          <option>Collab</option>
+          <option>Digital</option>
+          <option>General</option>
+        </select>
+        <select id="filter-status" onchange="render()">
+          <option value="All">All Status</option>
+          <option>Available</option>
+          <option>Sold Out</option>
+          <option>Delisted</option>
+        </select>
+        <select id="sort-by" onchange="render()">
+          <option value="newest">Newest First</option>
+          <option value="name">Name A–Z</option>
+          <option value="price-asc">Price ↑</option>
+          <option value="price-desc">Price ↓</option>
+        </select>
+        <div class="density-group">
+          <button class="density-btn active" data-density="normal" onclick="setDensity('normal')" title="Normal view">▦</button>
+          <button class="density-btn" data-density="compact" onclick="setDensity('compact')" title="Compact view">▤</button>
+        </div>
+        <span id="result-count">—</span>
+      </div>
+
+      <!-- Content -->
+      <div id="grid-container">
+        <div id="loading-state">
+          <div class="spinner"></div>
+          <div>Loading merch from shop.hololivepro.com…</div>
+          <div id="load-progress" style="font-size:0.72rem;color:var(--text-faint)"></div>
+        </div>
+        <div id="empty-state" style="display:none">
+          <div>No items found</div>
+          <div style="font-size:0.73rem;color:var(--text-faint)">Try adjusting your filters</div>
+        </div>
+        <div id="grid" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-overlay" class="hidden" onclick="closeModal(event)">
+  <div id="modal">
+    <div id="modal-img-wrap" style="display:none" onclick="if(!event.target.closest('.gallery-arrow')&&!event.target.closest('.modal-img-badges')){openLightbox(document.getElementById('modal-img').src)}">
+      <img id="modal-img" src="" alt="" />
+      <div class="modal-img-fade"></div>
+      <div class="modal-img-badges">
+        <span id="modal-status-badge" class="badge"></span>
+        <span id="modal-type-badge" class="badge badge-type"></span>
+      </div>
+      <button class="gallery-arrow gallery-prev" id="gallery-prev" onclick="galleryStep(-1)">&#8249;</button>
+      <button class="gallery-arrow gallery-next" id="gallery-next" onclick="galleryStep(1)">&#8250;</button>
+      <div id="gallery-dots"></div>
+    </div>
+    <div id="modal-body">
+      <div id="modal-title"></div>
+      <div id="modal-talents"></div>
+      <div id="modal-price"></div>
+      <div id="modal-drop-timer" class="modal-drop-timer" style="display:none">
+        <span class="modal-drop-label">⏱ Time since release</span>
+        <div id="modal-timer-inner"></div>
+      </div>
+      <div id="modal-actions">
+        <a id="modal-shop-link" href="#" target="_blank" rel="noopener noreferrer" class="modal-shop-btn">View on Shop 🛒</a>
+        <button id="modal-wl-btn" class="modal-action-btn modal-wishlist-off" onclick="modalToggleWishlist()">☆ Wishlist</button>
+        <button id="modal-ow-btn" class="modal-action-btn modal-owned-off" onclick="modalToggleOwned()">+ Own</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="hidden" onclick="closeLightbox(event)">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()" />
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden"></div>
+
+<!-- Scroll to top -->
+<button id="scroll-top" onclick="scrollToTop()" title="Back to top">↑</button>
+
+<script>
+// ── Talent roster ─────────────────────────────────────────────────────────────
+// aliases: exact strings that appear as Shopify tags (Japanese names, short names, etc.)
+// matchTalents checks these as whole-tag matches (not substring), so aliases can be short
+const TALENTS = [
+  // hololive Generation 0
+  { id:"sora",      name:"Tokino Sora",       branch:"JP", gen:"hololive Generation 0",  color:"#245eff", aliases:["ときのそら","tokino sora"] },
+  { id:"roboco",    name:"Roboco-san",         branch:"JP", gen:"hololive Generation 0",  color:"#a36694", aliases:["ロボ子さん","roboco-san","roboco","robocosan"] },
+  { id:"miko",      name:"Sakura Miko",        branch:"JP", gen:"hololive Generation 0",  color:"#ff9cb4", aliases:["さくらみこ","sakura miko"] },
+  { id:"suisei",    name:"Hoshimachi Suisei",  branch:"JP", gen:"hololive Generation 0",  color:"#50e5f9", aliases:["星街すいせい","hoshimachi suisei"] },
+  { id:"azki",      name:"AZKi",               branch:"JP", gen:"hololive Generation 0",  color:"#f4348b", aliases:["azki"] },
+  // hololive 1st Generation
+  { id:"mel",       name:"Yozora Mel",         branch:"JP", gen:"hololive 1st Generation", color:"#ffdd17", aliases:["夜空メル","yozora mel"] },
+  { id:"fubuki",    name:"Shirakami Fubuki",   branch:"JP", gen:"hololive 1st Generation", color:"#76dfff", aliases:["白上フブキ","shirakami fubuki"] },
+  { id:"matsuri",   name:"Natsuiro Matsuri",   branch:"JP", gen:"hololive 1st Generation", color:"#ffa227", aliases:["夏色まつり","natsuiro matsuri"] },
+  { id:"aki",       name:"Aki Rosenthal",      branch:"JP", gen:"hololive 1st Generation", color:"#ff1c9a", aliases:["アキ・ローゼンタール","aki rosenthal"] },
+  { id:"haato",     name:"Akai Haato",         branch:"JP", gen:"hololive 1st Generation", color:"#fc123f", aliases:["赤井はあと","akai haato","haachama"] },
+  // hololive 2nd Generation
+  { id:"aqua",      name:"Minato Aqua",        branch:"JP", gen:"hololive 2nd Generation", color:"#ffa6ea", aliases:["湊あくあ","minato aqua"] },
+  { id:"shion",     name:"Murasaki Shion",     branch:"JP", gen:"hololive 2nd Generation", color:"#ad6ce0", aliases:["紫咲シオン","murasaki shion"] },
+  { id:"ayame",     name:"Nakiri Ayame",       branch:"JP", gen:"hololive 2nd Generation", color:"#ed3a4f", aliases:["百鬼あやめ","nakiri ayame"] },
+  { id:"choco",     name:"Yuzuki Choco",       branch:"JP", gen:"hololive 2nd Generation", color:"#ff6e9b", aliases:["癒月ちょこ","yuzuki choco"] },
+  { id:"subaru",    name:"Oozora Subaru",      branch:"JP", gen:"hololive 2nd Generation", color:"#e0ff2c", aliases:["大空スバル","oozora subaru"] },
+  // GAMERS (Fubuki is also in Gen 1 — appears in both sidebar sections)
+  { id:"fubuki",    name:"Shirakami Fubuki",   branch:"JP", gen:"GAMERS",                  color:"#76dfff", aliases:["白上フブキ","shirakami fubuki"] },
+  { id:"mio",       name:"Ookami Mio",         branch:"JP", gen:"GAMERS",                  color:"#ff314a", aliases:["大神ミオ","ookami mio"] },
+  { id:"okayu",     name:"Nekomata Okayu",     branch:"JP", gen:"GAMERS",                  color:"#e27dfd", aliases:["猫又おかゆ","nekomata okayu"] },
+  { id:"korone",    name:"Inugami Korone",     branch:"JP", gen:"GAMERS",                  color:"#ffcc29", aliases:["戌神ころね","inugami korone"] },
+  // hololive 3rd Generation
+  { id:"pekora",    name:"Usada Pekora",       branch:"JP", gen:"hololive 3rd Generation", color:"#88d2ff", aliases:["兎田ぺこら","usada pekora"] },
+  { id:"rushia",    name:"Uruha Rushia",       branch:"JP", gen:"hololive 3rd Generation", color:"#30f9d2", aliases:["潤羽るしあ","uruha rushia"] },
+  { id:"flare",     name:"Shiranui Flare",     branch:"JP", gen:"hololive 3rd Generation", color:"#ff5028", aliases:["不知火フレア","shiranui flare"] },
+  { id:"marine",    name:"Houshou Marine",     branch:"JP", gen:"hololive 3rd Generation", color:"#ca3c28", aliases:["宝鐘マリン","houshou marine"] },
+  { id:"noel",      name:"Shirogane Noel",     branch:"JP", gen:"hololive 3rd Generation", color:"#acabb2", aliases:["白銀ノエル","shirogane noel"] },
+  // hololive 4th Generation
+  { id:"kanata",    name:"Amane Kanata",       branch:"JP", gen:"hololive 4th Generation", color:"#99d8ff", aliases:["天音かなた","amane kanata"] },
+  { id:"coco",      name:"Kiryu Coco",         branch:"JP", gen:"hololive 4th Generation", color:"#fe8b04", aliases:["桐生ココ","kiryu coco"] },
+  { id:"watame",    name:"Tsunomaki Watame",   branch:"JP", gen:"hololive 4th Generation", color:"#fef29e", aliases:["角巻わため","tsunomaki watame"] },
+  { id:"towa",      name:"Tokoyami Towa",      branch:"JP", gen:"hololive 4th Generation", color:"#cabaff", aliases:["常闇トワ","tokoyami towa"] },
+  { id:"luna",      name:"Himemori Luna",      branch:"JP", gen:"hololive 4th Generation", color:"#fe84c2", aliases:["姫森ルーナ","himemori luna"] },
+  // hololive 5th Generation
+  { id:"lamy",      name:"Yukihana Lamy",      branch:"JP", gen:"hololive 5th Generation", color:"#6bcdf8", aliases:["雪花ラミィ","yukihana lamy"] },
+  { id:"nene",      name:"Momosuzu Nene",      branch:"JP", gen:"hololive 5th Generation", color:"#ffb65d", aliases:["桃鈴ねね","momosuzu nene"] },
+  { id:"botan",     name:"Shishiro Botan",     branch:"JP", gen:"hololive 5th Generation", color:"#a3e5cf", aliases:["獅白ぼたん","shishiro botan"] },
+  { id:"polka",     name:"Omaru Polka",        branch:"JP", gen:"hololive 5th Generation", color:"#cf2830", aliases:["尾丸ポルカ","omaru polka"] },
+  // holoX
+  { id:"laplus",    name:"La+ Darknesss",      branch:"JP", gen:"holoX",                   color:"#936cc6", aliases:["ラプラス・ダークネス","la+ darknesss","laplus darknesss"] },
+  { id:"lui",       name:"Takane Lui",         branch:"JP", gen:"holoX",                   color:"#831550", aliases:["鷹嶺ルイ","takane lui"] },
+  { id:"koyori",    name:"Hakui Koyori",       branch:"JP", gen:"holoX",                   color:"#ffacd3", aliases:["博衣こより","hakui koyori"] },
+  { id:"chloe",     name:"Sakamata Chloe",     branch:"JP", gen:"holoX",                   color:"#cf4c4a", aliases:["沙花叉クロヱ","sakamata chloe"] },
+  { id:"iroha",     name:"Kazama Iroha",       branch:"JP", gen:"holoX",                   color:"#93dcd8", aliases:["風真いろは","kazama iroha"] },
+  // hololive DEV_IS — ReGLOSS
+  { id:"ririka",    name:"Ichijou Ririka",     branch:"DEV_IS", gen:"ReGLOSS",             color:"#f47da9", aliases:["一条莉々華","ichijou ririka"] },
+  { id:"ao",        name:"Hiodoshi Ao",        branch:"DEV_IS", gen:"ReGLOSS",             color:"#1d3467", aliases:["火威青","hiodoshi ao"] },
+  { id:"kanade",    name:"Otonose Kanade",     branch:"DEV_IS", gen:"ReGLOSS",             color:"#ffe7b5", aliases:["音乃瀬奏","otonose kanade"] },
+  { id:"hajime",    name:"Todoroki Hajime",    branch:"DEV_IS", gen:"ReGLOSS",             color:"#b6b9ff", aliases:["轟はじめ","todoroki hajime"] },
+  { id:"raden",     name:"Juufuutei Raden",    branch:"DEV_IS", gen:"ReGLOSS",             color:"#3c7c71", aliases:["儒烏風亭らでん","juufuutei raden"] },
+  // hololive DEV_IS — FLOW GLOW
+  { id:"riona",     name:"Isaki Riona",        branch:"DEV_IS", gen:"FLOW GLOW",           color:"#fe3480", aliases:["伊咲リオナ","isaki riona"] },
+  { id:"niko",      name:"Koganei Niko",       branch:"DEV_IS", gen:"FLOW GLOW",           color:"#f58017", aliases:["古金ニコ","koganei niko"] },
+  { id:"su",        name:"Mizumiya Su",        branch:"DEV_IS", gen:"FLOW GLOW",           color:"#71e5ff", aliases:["水宮スウ","mizumiya su"] },
+  { id:"chihaya",   name:"Rindo Chihaya",      branch:"DEV_IS", gen:"FLOW GLOW",           color:"#37baba", aliases:["輪堂千速","rindo chihaya"] },
+  { id:"vivi",      name:"Kikirara Vivi",      branch:"DEV_IS", gen:"FLOW GLOW",           color:"#ff90cc", aliases:["煌々羅ビビ","kikirara vivi"] },
+  // hololive English -Myth-
+  { id:"calliope",  name:"Mori Calliope",      branch:"EN", gen:"hololive English -Myth-", color:"#c90d40", aliases:["mori calliope","calliope"] },
+  { id:"kiara",     name:"Takanashi Kiara",    branch:"EN", gen:"hololive English -Myth-", color:"#ff511c", aliases:["takanashi kiara"] },
+  { id:"ina",       name:"Ninomae Ina'nis",    branch:"EN", gen:"hololive English -Myth-", color:"#62567e", aliases:["ninomae ina'nis","inanis"] },
+  { id:"gura",      name:"Gawr Gura",          branch:"EN", gen:"hololive English -Myth-", color:"#5d81c7", aliases:["gawr gura"] },
+  { id:"amelia",    name:"Watson Amelia",      branch:"EN", gen:"hololive English -Myth-", color:"#f8db92", aliases:["watson amelia"] },
+  // Project: HOPE
+  { id:"irys",      name:"IRyS",               branch:"EN", gen:"Project: HOPE",              color:"#e10e5b", aliases:["irys"] },
+  // hololive English -Council-
+  { id:"fauna",     name:"Ceres Fauna",        branch:"EN", gen:"hololive English -Council-", color:"#b4e4c7", aliases:["ceres fauna"] },
+  { id:"kronii",    name:"Ouro Kronii",        branch:"EN", gen:"hololive English -Council-", color:"#6879c7", aliases:["ouro kronii"] },
+  { id:"mumei",     name:"Nanashi Mumei",      branch:"EN", gen:"hololive English -Council-", color:"#dcc4b2", aliases:["nanashi mumei"] },
+  { id:"baelz",     name:"Hakos Baelz",        branch:"EN", gen:"hololive English -Council-", color:"#ff938d", aliases:["hakos baelz"] },
+  { id:"sana",      name:"Tsukumo Sana",       branch:"EN", gen:"hololive English -Council-", color:"#e7bbd2", aliases:["tsukumo sana"] },
+  // hololive English -Promise- (IRyS + active Council members)
+  { id:"irys",      name:"IRyS",               branch:"EN", gen:"hololive English -Promise-", color:"#e10e5b", aliases:["irys"] },
+  { id:"fauna",     name:"Ceres Fauna",        branch:"EN", gen:"hololive English -Promise-", color:"#b4e4c7", aliases:["ceres fauna"] },
+  { id:"kronii",    name:"Ouro Kronii",        branch:"EN", gen:"hololive English -Promise-", color:"#6879c7", aliases:["ouro kronii"] },
+  { id:"mumei",     name:"Nanashi Mumei",      branch:"EN", gen:"hololive English -Promise-", color:"#dcc4b2", aliases:["nanashi mumei"] },
+  { id:"baelz",     name:"Hakos Baelz",        branch:"EN", gen:"hololive English -Promise-", color:"#ff938d", aliases:["hakos baelz"] },
+  // hololive English -Advent-
+  { id:"shiori",    name:"Shiori Novella",     branch:"EN", gen:"hololive English -Advent-", color:"#b8a0cd", aliases:["shiori novella"] },
+  { id:"bijou",     name:"Koseki Bijou",       branch:"EN", gen:"hololive English -Advent-", color:"#6e5bf4", aliases:["koseki bijou"] },
+  { id:"nerissa",   name:"Nerissa Ravencroft", branch:"EN", gen:"hololive English -Advent-", color:"#2233fb", aliases:["nerissa ravencroft"] },
+  { id:"fuwamoco",  name:"FUWAMOCO",           branch:"EN", gen:"hololive English -Advent-", color:"#67b2ff", aliases:["fuwamoco","fuwawa","mococo"] },
+  // hololive English -Justice-
+  { id:"elizabeth", name:"Elizabeth Rose Bloodflame", branch:"EN", gen:"hololive English -Justice-", color:"#c7383b", aliases:["elizabeth rose bloodflame","elizabeth"] },
+  { id:"gigi",      name:"Gigi Murin",         branch:"EN", gen:"hololive English -Justice-", color:"#fdb440", aliases:["gigi murin"] },
+  { id:"cecilia",   name:"Cecilia Immergreen", branch:"EN", gen:"hololive English -Justice-", color:"#119a5c", aliases:["cecilia immergreen"] },
+  { id:"raora",     name:"Raora Panthera",     branch:"EN", gen:"hololive English -Justice-", color:"#f087a9", aliases:["raora panthera"] },
+  // hololive Indonesia 1st Generation
+  { id:"risu",      name:"Ayunda Risu",        branch:"ID", gen:"hololive Indonesia 1st Generation", color:"#f6bbbb", aliases:["ayunda risu"] },
+  { id:"moona",     name:"Moona Hoshinova",    branch:"ID", gen:"hololive Indonesia 1st Generation", color:"#b19ddc", aliases:["moona hoshinova"] },
+  { id:"iofi",      name:"Airani Iofifteen",   branch:"ID", gen:"hololive Indonesia 1st Generation", color:"#b3ee55", aliases:["airani iofifteen"] },
+  // hololive Indonesia 2nd Generation
+  { id:"ollie",     name:"Kureiji Ollie",      branch:"ID", gen:"hololive Indonesia 2nd Generation", color:"#d60e54", aliases:["kureiji ollie"] },
+  { id:"anya",      name:"Anya Melfissa",      branch:"ID", gen:"hololive Indonesia 2nd Generation", color:"#f2c95c", aliases:["anya melfissa"] },
+  { id:"reine",     name:"Pavolia Reine",      branch:"ID", gen:"hololive Indonesia 2nd Generation", color:"#0f52ba", aliases:["pavolia reine"] },
+  // hololive Indonesia 3rd Generation
+  { id:"zeta",      name:"Vestia Zeta",        branch:"ID", gen:"hololive Indonesia 3rd Generation", color:"#bab9c3", aliases:["vestia zeta"] },
+  { id:"kaela",     name:"Kaela Kovalskia",    branch:"ID", gen:"hololive Indonesia 3rd Generation", color:"#ff3d3d", aliases:["kaela kovalskia"] },
+  { id:"kobo",      name:"Kobo Kanaeru",       branch:"ID", gen:"hololive Indonesia 3rd Generation", color:"#393464", aliases:["kobo kanaeru"] },
+  // holoAN
+  { id:"michiru",   name:"Izuki Michiru",      branch:"holoAN", gen:"holoAN", color:"#cb4b85", aliases:["izuki michiru","泉樹みちる"] },
+  { id:"sayaka",    name:"Hanazono Sayaka",    branch:"holoAN", gen:"holoAN", color:"#f3d086", aliases:["hanazono sayaka","花園さやか"] },
+  { id:"yuki",      name:"Kazeshiro Yuki",     branch:"holoAN", gen:"holoAN", color:"#92c3e8", aliases:["kazeshiro yuki","風城ゆき"] },
+  { id:"nodoka",    name:"Harusaki Nodoka",    branch:"holoAN", gen:"holoAN", color:"#e3f1cd", aliases:["harusaki nodoka","春咲のどか"] },
+  // Office Staff
+  { id:"achan",     name:"A-chan",             branch:"Office Staff", gen:"Office Staff", color:"#2b2b6e", aliases:["a-chan","friend a","友人a"] },
+];
+
+const _talentAliasMap = new Map();
+const _talentTitleEntries = [];
+{
+  const seen = new Set();
+  for (const t of TALENTS) {
+    for (const a of (t.aliases || [])) {
+      const key = a.toLowerCase();
+      if (!_talentAliasMap.has(key)) _talentAliasMap.set(key, []);
+      _talentAliasMap.get(key).push(t);
+    }
+    if (!seen.has(t.id)) {
+      seen.add(t.id);
+      _talentTitleEntries.push({ ref: t, nameLower: t.name.toLowerCase(), aliasesLower: (t.aliases || []).map(a => a.toLowerCase()) });
+    }
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function safeUrl(url) {
+  try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? url : ''; }
+  catch { return ''; }
+}
+
+const _tagTextCache = new Map();
+function tagTextColor(hex) {
+  let v = _tagTextCache.get(hex);
+  if (v) return v;
+  const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+  v = (r * 299 + g * 587 + b * 114) / 1000 > 110 ? hex
+    : '#' + [r,g,b].map(c => Math.round(c + (255 - c) * 0.55).toString(16).padStart(2, '0')).join('');
+  _tagTextCache.set(hex, v);
+  return v;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allProducts   = [];
+let productMap    = new Map();   // product_id → product object, O(1) modal lookup
+let userData      = { wishlist: [], owned: [] };
+let wishlistSet   = new Set();   // mirrors userData.wishlist for O(1) filter checks
+let ownedSet      = new Set();   // mirrors userData.owned for O(1) filter checks
+let activeTab     = 'browse';
+let activeTalent  = null;
+let modalProductId = null;
+let galleryImages = [];
+let galleryIndex  = 0;
+let toastTimer    = null;
+let _searchDebounce = null;
+let _timerEls     = [];          // cached timer elements, rebuilt after each render
+
+function debouncedRender() {
+  clearTimeout(_searchDebounce);
+  _searchDebounce = setTimeout(render, 220);
+}
+
+// ── Stars ─────────────────────────────────────────────────────────────────────
+(function buildStars() {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 25; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 1;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%; top:${Math.random()*100}%;
+      opacity:${Math.random()*0.5+0.1};
+      --dur:${(Math.random()*3+2).toFixed(1)}s;
+      --delay:-${(Math.random()*4).toFixed(1)}s;
+    `;
+    c.appendChild(s);
+  }
+})();
+
+// ── Build sidebar ─────────────────────────────────────────────────────────────
+(function buildSidebar() {
+  const branches = ['JP','EN','ID','DEV_IS','holoAN','Office Staff'];
+  const branchLabels = { JP:'Hololive JP', EN:'Hololive EN', ID:'Hololive ID', DEV_IS:'hololive DEV_IS', holoAN:'holoAN', 'Office Staff':'Office Staff' };
+  const list = document.getElementById('talent-list');
+
+  branches.forEach(branch => {
+    const branchTalents = TALENTS.filter(t => t.branch === branch);
+    if (!branchTalents.length) return;
+
+    // Branch header (click = toggle all gens in this branch)
+    const branchEl = document.createElement('div');
+    branchEl.className = 'branch-label collapsed';
+    branchEl.innerHTML = `<span>${branchLabels[branch]}</span><span class="branch-chevron">▾</span>`;
+
+    // Branch members container
+    const branchMembersEl = document.createElement('div');
+    branchMembersEl.className = 'branch-members collapsed';
+
+    branchEl.onclick = () => {
+      const isCollapsed = branchMembersEl.classList.toggle('collapsed');
+      branchEl.classList.toggle('collapsed', isCollapsed);
+      // Also collapse/expand all gen sections inside
+      branchMembersEl.querySelectorAll('.gen-members').forEach(gm => {
+        gm.classList.toggle('collapsed', isCollapsed);
+      });
+      branchMembersEl.querySelectorAll('.gen-label').forEach(gl => {
+        gl.classList.toggle('collapsed', isCollapsed);
+      });
+    };
+
+    list.appendChild(branchEl);
+    list.appendChild(branchMembersEl);
+
+    // Group by gen, preserving order of first appearance (talents can appear in multiple gens)
+    const genOrder = [];
+    const genMap = {};
+    branchTalents.forEach(t => {
+      if (!genMap[t.gen]) { genMap[t.gen] = []; genOrder.push(t.gen); }
+      genMap[t.gen].push(t);
+    });
+
+    genOrder.forEach(gen => {
+      // Gen subheading (collapsible, starts collapsed)
+      const genEl = document.createElement('div');
+      genEl.className = 'gen-label collapsed';
+      genEl.innerHTML = `<span>${gen}</span><span class="gen-chevron">▾</span>`;
+
+      const membersEl = document.createElement('div');
+      membersEl.className = 'gen-members collapsed';
+
+      genEl.onclick = (e) => {
+        e.stopPropagation();
+        const collapsed = membersEl.classList.toggle('collapsed');
+        genEl.classList.toggle('collapsed', collapsed);
+      };
+
+      branchMembersEl.appendChild(genEl);
+
+      genMap[gen].forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'talent-btn';
+        btn.dataset.talentId = t.id;
+        btn.innerHTML = `<span class="talent-dot" style="background:${t.color}"></span>${t.name}`;
+        btn.style.color = activeTalent === t.id ? t.color : '';
+        btn.onclick = () => setTalentFilter(t.id);
+        membersEl.appendChild(btn);
+      });
+
+      branchMembersEl.appendChild(membersEl);
+    });
+  });
+})();
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+function inferMerchType(title, tags) {
+  const t = (title + ' ' + tags.join(' ')).toLowerCase();
+  // Birthday must come before Anniversary since some titles contain both "誕生日" and "記念"
+  if (t.includes('birthday') || t.includes('誕生日')) return 'Birthday';
+  if (t.includes('anniversary') || (t.includes('周年') && !t.includes('誕生日'))) return 'Anniversary';
+  // Voice / audio content
+  if (t.includes('voice pack') || t.includes('asmr') || t.includes('ボイス')) return 'Voice Pack';
+  // Music releases
+  if (t.includes(' ep ') || t.includes('1st ep') || t.includes('album') || tags.includes('CD')) return 'Music';
+  // Figures
+  if (t.includes('nendoroid') || t.includes('figma') || t.includes('figure') || t.includes('フィギュア')) return 'Figure';
+  // Plush / stuffed toys
+  if (t.includes('plush') || t.includes('stuffed') || t.includes('ぬいぐるみ') || t.includes('nuigurumi')) return 'Plush';
+  // Costume / outfit (only explicit costume references, not general clothing)
+  if (t.includes('costume') || t.includes('衣装') || /\b2nd costume\b|\b3rd costume\b/.test(t)) return 'Costume';
+  // Acrylic goods
+  if (t.includes('acrylic') || t.includes('アクリル')) return 'Acrylic';
+  // Tapestry
+  if (t.includes('tapestry') || t.includes('タペストリー')) return 'Tapestry';
+  // Keychain / charm
+  if (t.includes('keychain') || t.includes('charm') || t.includes('キーホルダー')) return 'Keychain';
+  // Card game
+  if (t.includes('card game') || t.includes('holocard') || tags.includes('hololiveofficialcardgame')) return 'Card Game';
+  // Collab
+  if (t.includes('collab') || t.includes('collaboration') || t.includes('コラボ')) return 'Collab';
+  // Digital-only content
+  if (tags.includes('デジタルのみ') || tags.includes('デジタルコンテンツ')) return 'Digital';
+  return 'General';
+}
+
+const _SEP = /[\s,\-\/\|「」【】『』（）()・]/;
+function _hasWholePhrase(haystack, phrase) {
+  const idx = haystack.indexOf(phrase);
+  if (idx === -1) return false;
+  const before = idx === 0 ? '' : haystack[idx - 1];
+  const after  = haystack[idx + phrase.length] ?? '';
+  return (!before || _SEP.test(before)) && (!after || _SEP.test(after));
+}
+
+function matchTalents(title, tags) {
+  const matched = new Map();
+  for (const tag of tags) {
+    const hits = _talentAliasMap.get(tag.toLowerCase());
+    if (hits) for (const t of hits) if (!matched.has(t.id)) matched.set(t.id, t);
+  }
+  const titleLower = title.toLowerCase();
+  for (const e of _talentTitleEntries) {
+    if (matched.has(e.ref.id)) continue;
+    if (_hasWholePhrase(titleLower, e.nameLower) ||
+        e.aliasesLower.some(a => _hasWholePhrase(titleLower, a))) {
+      matched.set(e.ref.id, e.ref);
+    }
+  }
+  return [...matched.values()];
+}
+
+// ── Exchange rate ─────────────────────────────────────────────────────────────
+let usdPerJpy = null; // will be fetched on load
+
+async function fetchExchangeRate() {
+  try {
+    // Free, no-key exchange rate API
+    const res = await fetch('https://open.er-api.com/v6/latest/JPY');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    usdPerJpy = data.rates?.USD ?? null;
+  } catch {
+    // Fallback: approximate rate if API fails
+    usdPerJpy = 0.0067;
+  }
+}
+
+function jpyToUsd(yen) {
+  if (!usdPerJpy || !yen) return null;
+  return yen * usdPerJpy;
+}
+
+function fmtJpy(yen) {
+  return '¥' + Math.round(yen).toLocaleString();
+}
+
+function fmtUsd(yen) {
+  const usd = jpyToUsd(yen);
+  if (usd === null) return '';
+  return '$' + usd.toFixed(2);
+}
+
+// ── Archive URL — update YOUR_USERNAME to your GitHub username ────────────────
+const ARCHIVE_URL = 'https://raw.githubusercontent.com/DavidV97YR/hololive-Merch-Archive/main/merch.json';
+
+async function loadProducts() {
+  document.getElementById('load-progress').textContent = 'Loading…';
+
+  try {
+    const [, res] = await Promise.all([fetchExchangeRate(), fetch(ARCHIVE_URL)]);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const archive = await res.json();
+
+    // Map archive JSON fields to the shape the rest of the UI expects
+    allProducts = archive.map(p => {
+      const mergedTags = [...new Set([...(p.tags_jp || []), ...(p.tags_en || [])])];
+      const titleEn    = p.title_en || p.title_jp || '';
+      return {
+        id:           p.product_id,
+        handle:       p.handle,
+        title:        p.title_jp || titleEn,
+        titleEn,
+        type:         inferMerchType(titleEn, mergedTags),
+        tags:         mergedTags,
+        images:       (p.images_en && p.images_en.length ? p.images_en : p.images) || [],
+        image:        (p.images_en && p.images_en.length ? p.images_en[0] : (p.images && p.images[0])) || null,
+        url:          `https://shop.hololivepro.com/en/products/${p.handle}`,
+        available:    p.is_available,
+        status:       p.delisted_at  ? 'Delisted'
+                    : p.is_available ? 'Available'
+                    :                  'Sold Out',
+        delisted_at:  p.delisted_at  || null,
+        minPrice:     p.min_price    || 0,
+        maxPrice:     p.max_price    || 0,
+        talents:      matchTalents(titleEn, mergedTags),
+        publishedAt:  p.published_at || '',
+        _sortTs:      p.published_at ? new Date(p.published_at).getTime() : 0,
+        _search:      ((p.title_jp || '') + ' ' + titleEn + ' ' + mergedTags.join(' ')).toLowerCase(),
+      };
+    });
+
+    // Build O(1) lookup map
+    productMap = new Map(allProducts.map(p => [p.id, p]));
+
+  } catch (e) {
+    document.getElementById('loading-state').innerHTML = `
+      <span style="font-size:2.5rem">⚠️</span>
+      <div style="font-weight:700;font-size:0.95rem">Could not load archive</div>
+      <div style="font-size:0.75rem;color:var(--text-faint);max-width:320px;text-align:center;line-height:1.6">
+        ${esc(e.message)}<br><br>
+        Make sure the archive repo is public and <code style="color:#60a5fa">ARCHIVE_URL</code> has your correct GitHub username.
+      </div>
+      <button onclick="location.reload()" style="margin-top:6px;padding:9px 22px;border-radius:8px;border:none;cursor:pointer;background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;font-size:0.83rem;font-weight:700;">↺ Retry</button>
+    `;
+    return;
+  }
+
+  document.getElementById('header-subtitle').textContent =
+    `hololive-Merch-Archive · ${allProducts.length} items`;
+  document.getElementById('loading-state').style.display = 'none';
+  render();
+}
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function syncSets() {
+  wishlistSet = new Set(userData.wishlist);
+  ownedSet    = new Set(userData.owned);
+}
+
+async function loadUserData() {
+  try {
+    const raw = localStorage.getItem('holo-merch-userdata');
+    if (raw) userData = JSON.parse(raw);
+  } catch {}
+  syncSets();
+  updateTabCounts();
+}
+
+async function saveUserData() {
+  try { localStorage.setItem('holo-merch-userdata', JSON.stringify(userData)); } catch {}
+  syncSets();
+}
+
+function updateTabCounts() {
+  document.getElementById('wl-count').textContent = userData.wishlist.length;
+  document.getElementById('ow-count').textContent = userData.owned.length;
+}
+
+function exportUserData() {
+  const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'holovault-backup.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Exported wishlist & owned data');
+}
+
+function importUserData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024) { showToast('File too large'); input.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    input.value = '';
+    let parsed;
+    try { parsed = JSON.parse(reader.result); } catch { showToast('Invalid file format'); return; }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      showToast('Invalid file format'); return;
+    }
+
+    const wl = parsed.wishlist;
+    const ow = parsed.owned;
+    if (!Array.isArray(wl) || !Array.isArray(ow)) { showToast('Invalid data structure'); return; }
+
+    const validIds = new Set(allProducts.map(p => p.id));
+    const cleanWl = [...new Set(wl.filter(id => typeof id === 'string' && validIds.has(id)))];
+    const cleanOw = [...new Set(ow.filter(id => typeof id === 'string' && validIds.has(id)))];
+
+    userData.wishlist = cleanWl;
+    userData.owned = cleanOw;
+    saveUserData();
+    updateTabCounts();
+    render();
+    showToast(`Imported ${cleanWl.length} wishlist, ${cleanOw.length} owned`);
+  };
+  reader.readAsText(file);
+}
+
+// ── Filtering & rendering ─────────────────────────────────────────────────────
+function getFiltered() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const branch = document.getElementById('filter-branch').value;
+  const type   = document.getElementById('filter-type').value;
+  const status = document.getElementById('filter-status').value;
+  const sort   = document.getElementById('sort-by').value;
+
+  let list = allProducts.filter(p => {
+    if (search && !p._search.includes(search)) return false;
+    if (branch !== 'All') {
+      if (!p.talents.some(t => t.branch === branch)) return false;
+    }
+    if (type !== 'All Types' && p.type !== type) return false;
+    // Delisted items only appear when explicitly filtering for them
+    if (status === 'Delisted') {
+      if (p.status !== 'Delisted') return false;
+    } else if (status !== 'All') {
+      if (p.status !== status) return false;
+    } else {
+      // Default "All" view hides delisted — use Delisted filter to see them
+      if (p.status === 'Delisted') return false;
+    }
+    if (activeTalent && !p.talents.some(t => t.id === activeTalent)) return false;
+    if (activeTab === 'wishlist' && !wishlistSet.has(p.id)) return false;
+    if (activeTab === 'owned'    && !ownedSet.has(p.id))    return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    if (sort === 'newest')     return b._sortTs - a._sortTs;
+    if (sort === 'name')       return a.title.localeCompare(b.title);
+    if (sort === 'price-asc')  return a.minPrice - b.minPrice;
+    if (sort === 'price-desc') return b.minPrice - a.minPrice;
+    return 0;
+  });
+
+  return list;
+}
+
+function statusBadgeClass(status) {
+  if (status === 'Available')   return 'badge-status-available';
+  if (status === 'Sold Out')    return 'badge-status-soldout';
+  if (status === 'Coming Soon') return 'badge-status-comingsoon';
+  if (status === 'Pre-order')   return 'badge-status-preorder';
+  if (status === 'Delisted')    return 'badge-status-delisted';
+  return 'badge-status-available';
+}
+
+function cardHTML(p) {
+  const inWL  = wishlistSet.has(p.id);
+  const inOWN = ownedSet.has(p.id);
+  const dominant   = p.talents[0];
+  const borderColor = dominant ? dominant.color + '33' : 'rgba(147,51,234,0.2)';
+  const talentTagsHTML = p.talents.slice(0,3).map(t =>
+    `<span class="talent-tag" style="background:${esc(t.color)}30;color:${esc(tagTextColor(t.color))};border:1px solid ${esc(t.color)}66">${esc(t.name)}</span>`
+  ).join('') + (p.talents.length > 3 ? `<span style="font-size:0.6rem;color:var(--text-faint)">+${p.talents.length-3}</span>` : '');
+
+  const jpyMin = p.minPrice;
+  const jpyMax = p.maxPrice;
+  const hasRange = jpyMin !== jpyMax && jpyMax > 0;
+  const priceHTML = jpyMin
+    ? `<span class="card-price-jpy">${fmtJpy(jpyMin)}${hasRange ? '<span class="card-price-extra">+</span>' : ''}</span>` +
+      (usdPerJpy ? `<span class="card-price-usd">${fmtUsd(jpyMin)}${hasRange ? '+' : ''}</span>` : '')
+    : '<span class="card-price-jpy">—</span>';
+
+  // Show correct overlay label based on status
+  const overlayHTML = p.status === 'Delisted' ? '<div class="sold-overlay">DELISTED</div>'
+                    : !p.available             ? '<div class="sold-overlay">SOLD OUT</div>'
+                    : '';
+
+  return `
+  <div class="card" style="border:1px solid ${borderColor}" onclick="openModal('${esc(p.id)}')" data-dropped="${esc(p.publishedAt)}">
+    <div class="card-img-wrap">
+      ${p.image
+        ? `<img src="${safeUrl(p.image)}" alt="" loading="lazy" />`
+        : `<div class="card-no-img"></div>`
+      }
+      ${overlayHTML}
+      <div class="card-badges">
+        <span class="badge badge-type">${esc(p.type)}</span>
+      </div>
+      <div class="card-actions" onclick="event.stopPropagation()">
+        <button class="action-btn ${inWL ? 'wishlist-on' : 'wishlist-off'}"
+          onclick="toggleWishlist('${esc(p.id)}')" title="Wishlist">★</button>
+        <button class="action-btn ${inOWN ? 'owned-on' : 'owned-off'}"
+          onclick="toggleOwned('${esc(p.id)}')" title="Owned">✓</button>
+      </div>
+    </div>
+    <div class="card-info">
+      <div class="card-title">${esc(p.titleEn)}</div>
+      ${p.talents.length ? `<div class="card-talents">${talentTagsHTML}</div>` : ''}
+      <div class="card-footer">
+        <div class="card-price">${priceHTML}</div>
+        <span class="badge ${statusBadgeClass(p.status)}">${esc(p.status)}</span>
+      </div>
+      ${p.publishedAt ? `<div class="drop-timer" data-ts="${p._sortTs}"><div class="drop-timer-label"><span class="drop-timer-icon">⏱</span>Time since release</div><div class="timer-inner"></div></div>` : ''}
+    </div>
+  </div>`;
+}
+
+const RENDER_BATCH = 60;
+let _filtered = [];
+let _rendered = 0;
+let _firstRender = true;
+
+function render() {
+  _filtered = getFiltered();
+  _rendered = 0;
+  const grid  = document.getElementById('grid');
+  const empty = document.getElementById('empty-state');
+
+  document.getElementById('result-count').textContent =
+    `${_filtered.length} item${_filtered.length !== 1 ? 's' : ''}`;
+
+  if (_filtered.length === 0) {
+    grid.style.display  = 'none';
+    empty.style.display = 'flex';
+    _timerEls = [];
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.style.display  = 'grid';
+  grid.classList.toggle('animate', _firstRender);
+  _firstRender = false;
+
+  const batch = _filtered.slice(0, RENDER_BATCH);
+  grid.innerHTML = batch.map(cardHTML).join('');
+  _rendered = batch.length;
+  _rebuildTimerCache();
+}
+
+function _loadMore() {
+  if (_rendered >= _filtered.length) return;
+  const grid = document.getElementById('grid');
+  const batch = _filtered.slice(_rendered, _rendered + RENDER_BATCH);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = batch.map(cardHTML).join('');
+  const now = Date.now();
+  tmp.querySelectorAll('.drop-timer[data-ts]').forEach(el => {
+    const ts = +el.dataset.ts;
+    const inner = el.querySelector('.timer-inner');
+    if (!inner) return;
+    inner.innerHTML = timerHTML(ts, false);
+    if (now - ts < ONE_WEEK_MS) _timerEls.push({ ts, inner });
+  });
+  const frag = document.createDocumentFragment();
+  while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+  grid.appendChild(frag);
+  _rendered += batch.length;
+}
+
+function _rebuildTimerCache() {
+  _timerEls = [];
+  const now = Date.now();
+  document.getElementById('grid').querySelectorAll('.drop-timer[data-ts]').forEach(el => {
+    const ts = +el.dataset.ts;
+    const inner = el.querySelector('.timer-inner');
+    if (!inner) return;
+    inner.innerHTML = timerHTML(ts, false);
+    if (now - ts < ONE_WEEK_MS) _timerEls.push({ ts, inner });
+  });
+}
+
+// ── Wishlist / owned ──────────────────────────────────────────────────────────
+function toggleWishlist(id) {
+  if (userData.wishlist.includes(id)) {
+    userData.wishlist = userData.wishlist.filter(x => x !== id);
+    showToast('Removed from wishlist');
+  } else {
+    userData.wishlist.push(id);
+    userData.owned = userData.owned.filter(x => x !== id);
+    showToast('Added to wishlist ✨');
+  }
+  saveUserData(); updateTabCounts(); render();
+  if (modalProductId === id) refreshModalButtons();
+}
+
+function toggleOwned(id) {
+  if (userData.owned.includes(id)) {
+    userData.owned = userData.owned.filter(x => x !== id);
+    showToast('Marked as not owned');
+  } else {
+    userData.owned.push(id);
+    userData.wishlist = userData.wishlist.filter(x => x !== id);
+    showToast('Marked as owned 🎉');
+  }
+  saveUserData(); updateTabCounts(); render();
+  if (modalProductId === id) refreshModalButtons();
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  const p = productMap.get(id);
+  if (!p) return;
+  modalProductId = id;
+
+  const imgWrap = document.getElementById('modal-img-wrap');
+  galleryImages = p.images && p.images.length ? p.images : (p.image ? [p.image] : []);
+  galleryIndex = 0;
+  if (galleryImages.length) {
+    imgWrap.style.display = 'block';
+    gallerySetIndex(0);
+  } else {
+    imgWrap.style.display = 'none';
+  }
+
+  document.getElementById('modal-status-badge').textContent = p.status;
+  document.getElementById('modal-status-badge').className = `badge ${statusBadgeClass(p.status)}`;
+  document.getElementById('modal-type-badge').textContent = p.type;
+  document.getElementById('modal-title').textContent = p.titleEn;
+  document.getElementById('modal-shop-link').href = safeUrl(p.url);
+
+  const talentsEl = document.getElementById('modal-talents');
+  talentsEl.innerHTML = p.talents.map(t =>
+    `<span class="modal-talent-tag" style="background:${esc(t.color)}30;color:${esc(tagTextColor(t.color))};border-color:${esc(t.color)}66">${esc(t.name)}</span>`
+  ).join('');
+
+  const priceEl = document.getElementById('modal-price');
+  if (p.minPrice) {
+    const hasRange = p.minPrice !== p.maxPrice && p.maxPrice > 0;
+    const jpyStr = hasRange
+      ? `${fmtJpy(p.minPrice)} – ${fmtJpy(p.maxPrice)}`
+      : fmtJpy(p.minPrice);
+    const usdStr = usdPerJpy
+      ? (hasRange ? `(${fmtUsd(p.minPrice)} – ${fmtUsd(p.maxPrice)})` : `(${fmtUsd(p.minPrice)})`)
+      : '';
+    priceEl.innerHTML = `<span class="modal-price-jpy">${jpyStr}</span>${usdStr ? `<span class="modal-price-usd">${usdStr}</span>` : ''}`;
+  } else {
+    priceEl.innerHTML = '';
+  }
+
+  refreshModalButtons();
+
+  // Drop timer in modal
+  const modalTimerEl = document.getElementById('modal-drop-timer');
+  if (p.publishedAt) {
+    modalTimerEl.style.display = 'flex';
+    modalTimerEl.dataset.ts = p._sortTs;
+    tickModalTimer();
+  } else {
+    modalTimerEl.style.display = 'none';
+  }
+
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function refreshModalButtons() {
+  const inWL  = userData.wishlist.includes(modalProductId);
+  const inOWN = userData.owned.includes(modalProductId);
+  const wlBtn = document.getElementById('modal-wl-btn');
+  const owBtn = document.getElementById('modal-ow-btn');
+  wlBtn.textContent = inWL ? '★ Wishlisted' : '☆ Wishlist';
+  wlBtn.className = `modal-action-btn ${inWL ? 'modal-wishlist-on' : 'modal-wishlist-off'}`;
+  owBtn.textContent = inOWN ? '✓ Owned' : '+ Own';
+  owBtn.className = `modal-action-btn ${inOWN ? 'modal-owned-on' : 'modal-owned-off'}`;
+}
+
+function gallerySetIndex(idx) {
+  galleryIndex = Math.max(0, Math.min(idx, galleryImages.length - 1));
+  document.getElementById('modal-img').src = safeUrl(galleryImages[galleryIndex]);
+
+  // Arrows
+  const prev = document.getElementById('gallery-prev');
+  const next = document.getElementById('gallery-next');
+  if (prev) prev.disabled = galleryIndex === 0;
+  if (next) next.disabled = galleryIndex === galleryImages.length - 1;
+  // Hide arrows if only one image
+  const show = galleryImages.length > 1;
+  if (prev) prev.style.display = show ? 'flex' : 'none';
+  if (next) next.style.display = show ? 'flex' : 'none';
+
+  // Dots
+  const dotsEl = document.getElementById('gallery-dots');
+  if (dotsEl) {
+    if (galleryImages.length > 1) {
+      dotsEl.innerHTML = galleryImages.map((_, i) =>
+        `<button class="gallery-dot${i === galleryIndex ? ' active' : ''}" onclick="gallerySetIndex(${i})"></button>`
+      ).join('');
+    } else {
+      dotsEl.innerHTML = '';
+    }
+  }
+}
+
+function galleryStep(dir) {
+  gallerySetIndex(galleryIndex + dir);
+}
+
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = safeUrl(src);
+  document.getElementById('lightbox').classList.remove('hidden');
+}
+
+function closeLightbox(e) {
+  if (!e || e.target !== document.getElementById('lightbox-img')) {
+    document.getElementById('lightbox').classList.add('hidden');
+    document.getElementById('lightbox-img').src = '';
+  }
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    modalProductId = null;
+  }
+}
+
+function modalToggleWishlist() { if (modalProductId) toggleWishlist(modalProductId); }
+
+// Keyboard gallery nav
+document.addEventListener('keydown', e => {
+  if (document.getElementById('modal-overlay').classList.contains('hidden')) return;
+  if (e.key === 'ArrowLeft')  galleryStep(-1);
+  if (e.key === 'ArrowRight') galleryStep(1);
+  if (e.key === 'Escape') {
+    document.getElementById('lightbox').classList.add('hidden');
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+});
+function modalToggleOwned()    { if (modalProductId) toggleOwned(modalProductId); }
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  render();
+}
+
+// ── Talent filter ─────────────────────────────────────────────────────────────
+function setTalentFilter(id) {
+  activeTalent = id;
+  document.getElementById('all-talent-btn').classList.toggle('active', !id);
+  const t = id ? TALENTS.find(x => x.id === id) : null;
+  document.querySelectorAll('.talent-btn').forEach(btn => {
+    const isMatch = id && btn.dataset.talentId === id;
+    btn.classList.toggle('active', isMatch);
+    if (isMatch && t) {
+      btn.style.color = t.color;
+      btn.style.background = t.color + '18';
+    } else {
+      btn.style.color = '';
+      btn.style.background = '';
+    }
+  });
+  render();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 2500);
+}
+
+// ── Drop timers ───────────────────────────────────────────────────────────────
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const _pad2 = n => String(n).padStart(2, '0');
+
+function timerHTML(droppedTs, isModal) {
+  const elapsed = Date.now() - droppedTs;
+  if (elapsed < 0) return '';
+
+  const totalSec = Math.floor(elapsed / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  // Items < 1 week old: show live count-up ticker with "Released" prefix
+  // Items >= 1 week old: show human-readable "Released X ago"
+  if (elapsed < ONE_WEEK_MS) {
+    if (isModal) {
+      const segs = d > 0
+        ? [['D', d], ['H', h], ['M', m], ['S', s]]
+        : [['H', h], ['M', m], ['S', s]];
+      return `<div class="modal-tsegs">${
+          segs.map(([lbl, val], i) =>
+            `${i > 0 ? '<span class="modal-tsep">:</span>' : ''}` +
+            `<div class="modal-tseg"><span class="tseg-val">${_pad2(val)}</span><span class="tseg-lbl">${lbl}</span></div>`
+          ).join('')
+        }</div>`;
+    } else {
+      const parts = d > 0
+        ? [[d,'d'],[h,'h'],[m,'m'],[s,'s']]
+        : [[h,'h'],[m,'m'],[s,'s']];
+      return `<div class="timer-live">${
+          parts.map(([val, lbl]) =>
+            `<span class="tv">${d > 0 && lbl === 'd' ? val : _pad2(val)}</span><span class="tl">${lbl}</span>`
+          ).join('')
+        }</div>`;
+    }
+  }
+
+  // Older items: human-readable "X ago"
+  function agoText(long) {
+    if (d >= 365) {
+      const yrs = Math.floor(d / 365), rem = d % 365;
+      if (long) return rem > 0 ? `${yrs}y ${rem}d ago` : `${yrs} year${yrs !== 1 ? 's' : ''} ago`;
+      return rem > 0 ? `${yrs}y ${rem}d ago` : `${yrs}y ago`;
+    }
+    if (d >= 1)  return long ? `${d} day${d !== 1 ? 's' : ''} ago`    : `${d}d ago`;
+    if (h >= 1)  return long ? `${h} hour${h !== 1 ? 's' : ''} ago`   : `${h}h ago`;
+    if (m >= 1)  return long ? `${m} minute${m !== 1 ? 's' : ''} ago` : `${m}m ago`;
+    return long ? `${s} second${s !== 1 ? 's' : ''} ago` : `${s}s ago`;
+  }
+
+  if (isModal) {
+    return `<div class="modal-timer-days">Released <b>${agoText(true)}</b></div>`;
+  } else {
+    return `<div class="timer-days"><b>${agoText(false)}</b></div>`;
+  }
+}
+
+function tickAllTimers() {
+  for (let i = 0; i < _timerEls.length; i++) {
+    _timerEls[i].inner.innerHTML = timerHTML(_timerEls[i].ts, false);
+  }
+  tickModalTimer();
+}
+
+function tickModalTimer() {
+  const el = document.getElementById('modal-drop-timer');
+  if (!el || el.style.display === 'none' || !el.dataset.ts) return;
+  const inner = document.getElementById('modal-timer-inner');
+  if (inner) inner.innerHTML = timerHTML(+el.dataset.ts, true);
+}
+
+// Tick every second
+setInterval(tickAllTimers, 1000);
+
+// ── Sidebar toggle ──────────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    const opening = !sidebar.classList.contains('mobile-open');
+    sidebar.classList.remove('collapsed');
+    sidebar.classList.toggle('mobile-open', opening);
+    overlay.classList.toggle('visible', opening);
+  } else {
+    sidebar.classList.remove('mobile-open');
+    sidebar.classList.toggle('collapsed');
+  }
+}
+
+// ── Scroll to top ───────────────────────────────────────────────────────────
+function scrollToTop() {
+  document.getElementById('grid-container').scrollTo({ top: 0, behavior: 'smooth' });
+}
+let _scrollTick = false;
+const _gridContainer = document.getElementById('grid-container');
+const _scrollTopBtn = document.getElementById('scroll-top');
+_gridContainer.addEventListener('scroll', function() {
+  if (_scrollTick) return;
+  _scrollTick = true;
+  requestAnimationFrame(() => {
+    _scrollTopBtn.classList.toggle('visible', _gridContainer.scrollTop > 300);
+    if (_rendered < _filtered.length) {
+      const { scrollTop, scrollHeight, clientHeight } = _gridContainer;
+      if (scrollTop + clientHeight >= scrollHeight - 600) _loadMore();
+    }
+    _scrollTick = false;
+  });
+});
+
+// ── Grid density ────────────────────────────────────────────────────────────
+let gridDensity = 'normal';
+function setDensity(mode) {
+  gridDensity = mode;
+  document.getElementById('grid').classList.toggle('compact', mode === 'compact');
+  document.querySelectorAll('.density-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.density === mode);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadUserData();
+loadProducts();
+
+// ── PWA Service Worker ───────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

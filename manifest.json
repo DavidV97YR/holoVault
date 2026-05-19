@@ -1,0 +1,26 @@
+{
+  "name": "holoVault — Hololive Merch Archive",
+  "short_name": "holoVault",
+  "description": "Browse and track every hololive official merch drop with timers, filters, and wishlists",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0f",
+  "theme_color": "#a855f7",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "shopping"],
+  "lang": "en"
+}
