@@ -21,7 +21,7 @@ const ARCHIVE_PATTERN = new RegExp(R2_DOMAIN.replace('.', '\\.') + '.*\\.json');
 const CDN_IMG_PATTERN = new RegExp(R2_DOMAIN.replace('.', '\\.') + '.*\\.webp');
 const FONT_PATTERN    = /fonts\.(googleapis|gstatic)\.com/;
 
-const MAX_IMG_BYTES = 100 * 1024 * 1024; // 100 MB (shared across origin)
+const MAX_IMG_COUNT = 5000; // max images to keep in cache (FIFO)
 
 // ── Install: pre-cache app shell ─────────────────────────────────────────────
 self.addEventListener('install', event => {
@@ -98,7 +98,9 @@ function cacheFirst(request, cacheName) {
     cache.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(resp => {
-        if (resp.ok) {
+        // resp.status === 0 handles opaque cross-origin responses (e.g. R2 images),
+        // which Firefox correctly marks as non-ok per spec even when the fetch succeeded.
+        if (resp.ok || resp.status === 0) {
           cache.put(request, resp.clone());
           if (cacheName === IMG_CACHE) trimCache(IMG_CACHE);
         }
@@ -119,17 +121,13 @@ function networkFirst(request, cacheName) {
     .catch(() => caches.match(request));
 }
 
-// ── Cache size trim (size-based, FIFO) ───────────────────────────────────────
+// ── Cache count trim (count-based, FIFO) ─────────────────────────────────────
 async function trimCache(cacheName) {
-  const estimate = await navigator.storage.estimate();
-  const used = estimate.usage || 0;
-  if (used < MAX_IMG_BYTES) return;
-
   const cache = await caches.open(cacheName);
   const keys  = await cache.keys();
-  for (const key of keys) {
-    await cache.delete(key);
-    const newEstimate = await navigator.storage.estimate();
-    if ((newEstimate.usage || 0) < MAX_IMG_BYTES) break;
-  }
+  if (keys.length <= MAX_IMG_COUNT) return;
+
+  // Delete oldest entries until we're back under the limit
+  const toDelete = keys.slice(0, keys.length - MAX_IMG_COUNT);
+  await Promise.all(toDelete.map(key => cache.delete(key)));
 }
