@@ -16,12 +16,12 @@ const SHELL_FILES = [
   './manifest.json'
 ];
 
-const R2_DOMAIN      = 'pub-0298b2301e1648378bb71f8c2d22c63b.r2.dev';
+const R2_DOMAIN       = 'pub-0298b2301e1648378bb71f8c2d22c63b.r2.dev';
 const ARCHIVE_PATTERN = new RegExp(R2_DOMAIN.replace('.', '\\.') + '.*\\.json');
 const CDN_IMG_PATTERN = new RegExp(R2_DOMAIN.replace('.', '\\.') + '.*\\.webp');
 const FONT_PATTERN    = /fonts\.(googleapis|gstatic)\.com/;
 
-const MAX_IMG_ENTRIES = 500;
+const MAX_IMG_BYTES = 100 * 1024 * 1024; // 100 MB (shared across origin)
 
 // ── Install: pre-cache app shell ─────────────────────────────────────────────
 self.addEventListener('install', event => {
@@ -56,20 +56,20 @@ self.addEventListener('fetch', event => {
 
   // R2 images — cache-first (immutable URLs, no Class B calls on revisit)
   if (CDN_IMG_PATTERN.test(url)) {
-    event.respondWith(cacheFirst(event.request, IMG_CACHE, true));
+    event.respondWith(cacheFirst(event.request, IMG_CACHE));
     return;
   }
 
   // Google Fonts — cache-first
   if (FONT_PATTERN.test(url)) {
-    event.respondWith(cacheFirst(event.request, SHELL_CACHE, false));
+    event.respondWith(cacheFirst(event.request, SHELL_CACHE));
     return;
   }
 
   // App shell / navigation — cache-first with background refresh
   if (event.request.mode === 'navigate' ||
       SHELL_FILES.some(f => url.includes(f))) {
-    event.respondWith(cacheFirst(event.request, SHELL_CACHE, false));
+    event.respondWith(cacheFirst(event.request, SHELL_CACHE));
     return;
   }
 
@@ -93,14 +93,14 @@ function staleWhileRevalidate(request, cacheName) {
   );
 }
 
-function cacheFirst(request, cacheName, trim) {
+function cacheFirst(request, cacheName) {
   return caches.open(cacheName).then(cache =>
     cache.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(resp => {
         if (resp.ok) {
           cache.put(request, resp.clone());
-          if (trim) trimCache(cacheName, MAX_IMG_ENTRIES);
+          if (cacheName === IMG_CACHE) trimCache(IMG_CACHE);
         }
         return resp;
       });
@@ -119,11 +119,17 @@ function networkFirst(request, cacheName) {
     .catch(() => caches.match(request));
 }
 
-// ── Cache size trim (FIFO) ───────────────────────────────────────────────────
-async function trimCache(cacheName, maxEntries) {
+// ── Cache size trim (size-based, FIFO) ───────────────────────────────────────
+async function trimCache(cacheName) {
+  const estimate = await navigator.storage.estimate();
+  const used = estimate.usage || 0;
+  if (used < MAX_IMG_BYTES) return;
+
   const cache = await caches.open(cacheName);
   const keys  = await cache.keys();
-  if (keys.length > maxEntries) {
-    await Promise.all(keys.slice(0, keys.length - maxEntries).map(k => cache.delete(k)));
+  for (const key of keys) {
+    await cache.delete(key);
+    const newEstimate = await navigator.storage.estimate();
+    if ((newEstimate.usage || 0) < MAX_IMG_BYTES) break;
   }
 }
