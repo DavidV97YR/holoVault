@@ -1096,7 +1096,7 @@ function fmtUsd(yen) {
 }
 
 // ── Archive URL — update YOUR_USERNAME to your GitHub username ────────────────
-const ARCHIVE_URL = 'https://raw.githubusercontent.com/DavidV97YR/hololive-Merch-Archive/main/merch.json';
+const ARCHIVE_URL = 'https://pub-0298b2301e1648378bb71f8c2d22c63b.r2.dev/merch.json';
 
 async function loadProducts() {
   document.getElementById('load-progress').textContent = 'Loading…';
@@ -1117,8 +1117,8 @@ async function loadProducts() {
         titleEn,
         type:         inferMerchType(titleEn, mergedTags),
         tags:         mergedTags,
-        images:       (p.images_en && p.images_en.length ? p.images_en : p.images) || [],
-        image:        (p.images_en && p.images_en.length ? p.images_en[0] : (p.images && p.images[0])) || null,
+        images:       p.images || [],
+        image:        (p.images && p.images[0]) || null,
         url:          `https://shop.hololivepro.com/en/products/${p.handle}`,
         available:    p.is_available,
         status:       p.delisted_at  ? 'Delisted'
