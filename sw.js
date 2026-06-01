@@ -1,7 +1,7 @@
 // holoVault Service Worker
 // Strategy:
 //   - App shell (HTML, manifest, fonts): cache-first with background refresh
-//   - Archive JSON data: stale-while-revalidate (instant load, fresh in background)
+//   - Archive JSON data: conditional network fetch (ETag/304 — free when unchanged)
 //   - Product images (R2): cache-first (URLs are immutable)
 //   - Everything else: network-first with cache fallback
 
@@ -48,9 +48,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = event.request.url;
 
-  // R2 JSON archive — stale-while-revalidate (show cached instantly, refresh behind)
+  // R2 JSON archive — conditional fetch (sends ETag; 304 is free, 200 updates cache)
   if (ARCHIVE_PATTERN.test(url)) {
-    event.respondWith(staleWhileRevalidate(event.request, DATA_CACHE));
+    event.respondWith(conditionalFetch(event.request, DATA_CACHE));
     return;
   }
 
@@ -79,18 +79,44 @@ self.addEventListener('fetch', event => {
 
 // ── Caching strategies ───────────────────────────────────────────────────────
 
-function staleWhileRevalidate(request, cacheName) {
-  return caches.open(cacheName).then(cache =>
-    cache.match(request).then(cached => {
-      const fresh = fetch(request)
-        .then(resp => {
-          if (resp.ok) cache.put(request, resp.clone());
-          return resp;
-        })
-        .catch(() => cached);
-      return cached || fresh;
-    })
-  );
+// Conditional fetch: sends If-None-Match (ETag) so R2 can return 304 (free)
+// when the JSON hasn't changed. On 200, updates cache and returns fresh response.
+// On 304, returns the cached response directly. Falls back to cache if offline.
+async function conditionalFetch(request, cacheName) {
+  const cache  = await caches.open(cacheName);
+  const cached = await cache.match(request);
+
+  // Build a conditional request if we have a cached ETag
+  let condRequest = request;
+  if (cached) {
+    const etag = cached.headers.get('ETag');
+    if (etag) {
+      condRequest = new Request(request.url, {
+        headers: { 'If-None-Match': etag }
+      });
+    }
+  }
+
+  try {
+    const resp = await fetch(condRequest);
+
+    if (resp.status === 304) {
+      // Not modified — serve from cache (no Class B charge)
+      return cached;
+    }
+
+    if (resp.ok) {
+      // New content — update cache and return fresh response
+      await cache.put(request, resp.clone());
+      return resp;
+    }
+
+    // Unexpected non-ok response — fall back to cache if available
+    return cached || resp;
+  } catch {
+    // Offline — serve cache
+    return cached || new Response('Offline', { status: 503 });
+  }
 }
 
 function cacheFirst(request, cacheName) {
